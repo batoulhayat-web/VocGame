@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1'/>
+<title>Pastel Vocab Match — Miss Batool (Certificate)</title>
+<style>
+:root{--bg1:#fffafc;--bg2:#f0faff;--mint:#c9f5df;--sky:#bfe4ff;--peach:#ffe0c2;--lilac:#e7d9ff;--rose:#ffd6e7}
+*{box-sizing:border-box} body{margin:0;font-family:'Poppins',sans-serif;background:linear-gradient(145deg,var(--bg1),var(--bg2));}
+.wrap{max-width:880px;margin:auto;padding:20px}.app{background:#fff;border-radius:24px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px;}
+header{display:flex;justify-content:space-between;align-items:center} h1{font-size:1.4rem;margin:0;color:#333}
+.name-entry{margin-top:15px;display:flex;gap:10px;flex-wrap:wrap} input{flex:1;padding:10px;border-radius:10px;border:2px solid var(--sky)}
+button{border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.08)}
+.btn-start{background:linear-gradient(135deg,var(--rose),var(--sky))}.btn-small{background:linear-gradient(135deg,var(--mint),var(--peach))}
+.card{background:#fff;border:2px solid #eef2ff;border-radius:16px;padding:16px;margin-top:12px}
+.q-card{display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#fff,#f7f8ff);border:2px dashed #eae6ff}
+.q-emoji{font-size:36px}.choices{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:10px}
+.choice{border:2px solid #eef2ff;border-radius:14px;padding:14px;background:#fff;font-size:18px;display:flex;justify-content:center;align-items:center;}
+.choice:hover{box-shadow:0 6px 14px rgba(0,0,0,.06)} .choice.correct{background:linear-gradient(180deg,#fff,#eaffea);border-color:#8ae18a}
+.choice.wrong{background:linear-gradient(180deg,#fff,#fff2f5);border-color:#ff9aa2}
+.watermark{position:fixed;right:12px;bottom:10px;background:rgba(255,255,255,.8);padding:6px 10px;border-radius:999px;font-weight:700;opacity:.7;border:1px solid #eee}
+.noscript{max-width:880px;margin:12px auto;background:#fff3cd;border:1px solid #ffeeba;padding:12px 14px;border-radius:10px;color:#7c5800}
+.modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);padding:20px}
+.modal.show{display:grid}.box{background:#fff;border-radius:22px;max-width:760px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.cert{display:grid;place-items:center;background:#fff0f5;padding:16px;border-radius:18px;border:2px dashed #ffd6e7}
+canvas{max-width:100%;border-radius:12px;border:2px solid #fce7f3;background:#fff}
+</style>
+</head>
+<body>
+<noscript><div class='noscript'>This game needs JavaScript. Please open in Chrome/Safari/Edge and enable JavaScript.</div></noscript>
+<div class='wrap'><div class='app'>
+<header><h1>🌸 Pastel Vocabulary Match — Unit 3 (Part 1)</h1><div style='font-size:20px'>🌿🫧🧼🌳🐢👥</div></header>
+<section class='name-entry'>
+  <input id='playerName' type='text' placeholder='Write your name to begin…'>
+  <button class='btn-start' id='btnStart' type='button'>Start ▶</button>
+  <button class='btn-small' id='btnReset' type='button'>↻ Reset</button>
+</section>
+<section id='welcome' class='card'><h2>How to Play</h2><p>Read the definition and click the correct word. Finish all questions to get your certificate 🎉</p></section>
+<section id='gameArea' hidden>
+  <div class='card q-card'><div class='q-emoji' id='qEmoji'>🌍</div><div id='qText'>Everything around us — air, water, land and living things. Which word is this?</div></div>
+  <div class='card'><div class='choices' id='choices'></div></div>
+</section>
+</div></div>
+<div class='watermark'>Miss Batool</div>
+
+<!-- Certificate Modal -->
+<div class='modal' id='modal'><div class='box'>
+  <h2>🏆 Your Certificate is ready!</h2>
+  <div class='cert'><canvas id='certCanvas' width='1200' height='800' aria-label='Certificate canvas'></canvas></div>
+  <div style='display:flex;gap:10px;flex-wrap:wrap;margin-top:10px'>
+    <button class='btn-small' id='btnDownload' type='button'>Download Certificate</button>
+    <button class='btn-small' id='btnClose' type='button'>Close</button>
+  </div>
+</div></div>
+
+<script>(function(){'use strict';
+function init(){
+const WORDS=[
+  {word:'environment',emoji:'🌍',def:'everything around us — air, water, land, and living things'},
+  {word:'harm',emoji:'💥',def:'to hurt or damage something'},
+  {word:'dirty',emoji:'🧼',def:'not clean'},
+  {word:'forest',emoji:'🌳',def:'a large area of trees'},
+  {word:'crowded',emoji:'👥',def:'full of people'},
+  {word:'carelessly',emoji:'😬',def:'without thinking or being careful'}
+];
+const TOTAL_QUESTIONS=10; let qIndex=0,questions=[],playerName='';
+const $=(s)=>document.querySelector(s);
+const qText=$('#qText'), qEmoji=$('#qEmoji'), choicesEl=$('#choices');
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]];}return a;}
+function wrongOptions(answer,n){const pool=WORDS.filter(w=>w.word!==answer.word).map(w=>w.word);return shuffle(pool).slice(0,n);}
+function makeQuestions(){const list=[];for(let i=0;i<TOTAL_QUESTIONS;i++){const w=WORDS[Math.random()*WORDS.length|0];const opts=shuffle([w.word,...wrongOptions(w,3)]);list.push({def:w.def,answer:w.word,choices:opts,emoji:w.emoji});}return list;}
+function render(){ if(qIndex>=TOTAL_QUESTIONS){ showCertificate(); return; }
+  const q=questions[qIndex]; qText.textContent=q.def+'. Which word is this?'; qEmoji.textContent=q.emoji; choicesEl.innerHTML='';
+  q.choices.forEach(choice=>{ const btn=document.createElement('button'); btn.className='choice'; btn.type='button'; btn.textContent=choice;
+    btn.onclick=()=>{ if(choice===q.answer){ btn.classList.add('correct'); [...document.querySelectorAll('.choice')].forEach(b=>b.disabled=true); setTimeout(()=>{qIndex++; render();}, 500); }
+                      else { btn.classList.add('wrong'); } };
+    choicesEl.appendChild(btn); });
+}
+function start(){ playerName=(document.getElementById('playerName').value||'Student').trim().slice(0,28); questions=makeQuestions(); qIndex=0;
+  document.getElementById('welcome').hidden=true; document.getElementById('gameArea').hidden=false; render(); }
+function reset(){ document.getElementById('welcome').hidden=false; document.getElementById('gameArea').hidden=true; }
+
+// Certificate generation (canvas) — sandbox-safe, no audio
+function drawCertificate(){
+  const c=document.getElementById('certCanvas'); const ctx=c.getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,c.width,c.height); grad.addColorStop(0,'#fff5fb'); grad.addColorStop(1,'#f0fffe');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,c.width,c.height);
+  ctx.strokeStyle='#ffd6e7'; ctx.lineWidth=14; ctx.strokeRect(20,20,c.width-40,c.height-40);
+  ctx.fillStyle='#334155'; ctx.font='bold 56px "Segoe UI", Arial'; ctx.textAlign='center';
+  ctx.fillText('Certificate of Participation', c.width/2, 140);
+  ctx.font='28px "Segoe UI", Arial'; ctx.fillStyle='#64748b'; ctx.fillText('Awarded to', c.width/2, 210);
+  ctx.fillStyle='#111827'; ctx.font='bold 72px "Segoe UI", Arial'; ctx.fillText(playerName||'Student', c.width/2, 300);
+  ctx.fillStyle='#334155'; ctx.font='28px "Segoe UI", Arial'; ctx.fillText('For completing the Pastel Vocabulary Match game', c.width/2, 360);
+  ctx.font='48px "Segoe UI Emoji"'; ctx.fillText('🌿 🫧 🌳 🐢 👥 🧼', c.width/2, 470);
+  ctx.strokeStyle='#cbd5e1'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(180, 560); ctx.lineTo(520,560); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c.width-520, 560); ctx.lineTo(c.width-180,560); ctx.stroke();
+  ctx.fillStyle='#64748b'; ctx.font='20px "Segoe UI", Arial'; ctx.fillText('Miss Batool (Teacher)', 350, 590);
+  const d=new Date(); ctx.fillText('Date: '+d.toLocaleDateString(), c.width-350, 590);
+  ctx.fillStyle='#94a3b8'; ctx.font='18px Arial'; ctx.fillText('Unit 3 · Our Environment is in Danger · Vocabulary Part 1', c.width/2, 740);
+}
+function showCertificate(){ drawCertificate(); document.getElementById('modal').classList.add('show'); }
+function downloadCertificate(){ const link=document.createElement('a'); link.download='Certificate-'+(playerName||'Student').replace(/\s+/g,'_')+'.png'; link.href=document.getElementById('certCanvas').toDataURL('image/png'); link.click(); }
+
+document.getElementById('btnStart').addEventListener('click', start);
+document.getElementById('btnReset').addEventListener('click', reset);
+document.getElementById('btnClose').addEventListener('click', function(){document.getElementById('modal').classList.remove('show');});
+document.getElementById('btnDownload').addEventListener('click', downloadCertificate);
+}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
+})();</script>
+</body>
+</html>
